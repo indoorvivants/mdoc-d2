@@ -44,8 +44,10 @@ lazy val munitSettings = Seq(
   testFrameworks += new TestFramework("munit.Framework")
 )
 
-lazy val root = projectMatrix
-  .aggregate(core)
+lazy val root = project
+  .in(file("."))
+  .aggregate(core.projectRefs: _*)
+  .settings(publish / skip := true, publishLocal / skip := true)
 
 lazy val core = projectMatrix
   .in(file("modules/core"))
