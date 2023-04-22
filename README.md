@@ -28,6 +28,8 @@ your markdown files.
 
 ## Usage
 
+You don't need to install D2, it will be bootstrapped by [Yank](https://github.com/indoorvivants/yank#d2).
+
 Simple use the `scala mdoc:d2` language in your markdown snippets and enjoy:
 
 ````
