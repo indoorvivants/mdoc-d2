@@ -82,9 +82,9 @@ class D2Modifier extends mdoc.StringModifier {
     val raw = create(cli, source, reporter)
     val encoded = new String(encoder.encode(raw.getBytes()))
 
-    s"""
+    "\n\n" + s"""
     <img alt="" src="data:image/svg+xml;base64,$encoded">
-    """.trim
+    """.trim + "\n\n"
 
   }
 
