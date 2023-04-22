@@ -50,7 +50,7 @@ lazy val root = projectMatrix
 lazy val core = projectMatrix
   .in(file("modules/core"))
   .settings(
-    name := "core",
+    moduleName := "mdoc-d2",
     Test / scalacOptions ~= filterConsoleScalacOptions,
     libraryDependencies += "com.indoorvivants" %% "yank" % Versions.yank,
     libraryDependencies += "org.scalameta" %% "mdoc" % Versions.mdoc % "provided"
