@@ -28,9 +28,9 @@ your markdown files.
 
 ## Usage
 
-You don't need to install D2, it will be bootstrapped by [Yank](https://github.com/indoorvivants/yank#d2).
-
 _Note that Github intentionally doesn't render images which are specified using the `data:` source - it's done for security reasons, and as such you won't see the diagrams rendered on this page. Please refer to the [website](https://indoorvivants.github.io/mdoc-d2/#/) insteadh which hosts a copy of this documentation_
+
+You don't need to install D2, it will be bootstrapped by [Yank](https://github.com/indoorvivants/yank#d2).
 
 Simple use the `scala mdoc:d2` language in your markdown snippets and enjoy:
 
