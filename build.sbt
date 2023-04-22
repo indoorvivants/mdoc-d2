@@ -1,6 +1,4 @@
 Global / excludeLintKeys += logManager
-Global / excludeLintKeys += scalaJSUseMainModuleInitializer
-Global / excludeLintKeys += scalaJSLinkerConfig
 
 inThisBuild(
   List(
@@ -11,9 +9,9 @@ inThisBuild(
     organization := "com.indoorvivants",
     organizationName := "Anton Sviridov",
     homepage := Some(
-      url("https://github.com/indoorvivants/scala-library-template")
+      url("https://github.com/indoorvivants/mdoc-d2")
     ),
-    startYear := Some(2020),
+    startYear := Some(2023),
     licenses := List(
       "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
     ),
@@ -21,28 +19,27 @@ inThisBuild(
       Developer(
         "keynmol",
         "Anton Sviridov",
-        "keynmol@gmail.com",
+        "velvetbaldmime@protonmail.com",
         url("https://blog.indoorvivants.com")
       )
     )
   )
 )
 
-// https://github.com/cb372/sbt-explicit-dependencies/issues/27
-lazy val disableDependencyChecks = Seq(
-  unusedCompileDependenciesTest := {},
-  missinglinkCheck := {},
-  undeclaredCompileDependenciesTest := {}
-)
+val Versions = new {
+  val Scala213 = "2.13.10"
+  val Scala212 = "2.12.17"
+  val Scala3 = "3.2.2"
+  val scalaVersions = Seq(Scala3, Scala212, Scala213)
 
-val Scala213 = "2.13.10"
-val Scala212 = "2.12.17"
-val Scala3 = "3.2.2"
-val scalaVersions = Seq(Scala3, Scala212, Scala213)
+  val yank = "0.0.1"
+  val mdoc = "2.3.7"
+  val scalameta = "4.7.1"
+}
 
 lazy val munitSettings = Seq(
   libraryDependencies += {
-    "org.scalameta" %%% "munit" % "1.0.0-M7" % Test
+    "org.scalameta" %% "munit" % "1.0.0-M7" % Test
   },
   testFrameworks += new TestFramework("munit.Framework")
 )
@@ -54,37 +51,85 @@ lazy val core = projectMatrix
   .in(file("modules/core"))
   .settings(
     name := "core",
-    Test / scalacOptions ~= filterConsoleScalacOptions
+    Test / scalacOptions ~= filterConsoleScalacOptions,
+    libraryDependencies += "com.indoorvivants" %% "yank" % Versions.yank,
+    libraryDependencies += "org.scalameta" %% "mdoc" % Versions.mdoc % "provided"
   )
   .settings(munitSettings)
-  .jvmPlatform(scalaVersions)
-  .jsPlatform(scalaVersions, disableDependencyChecks)
-  .nativePlatform(scalaVersions, disableDependencyChecks)
+  .jvmPlatform(Versions.scalaVersions)
   .enablePlugins(BuildInfoPlugin)
   .settings(
-    buildInfoPackage := "com.indoorvivants.library.internal",
+    buildInfoPackage := "com.indoorvivants.mdoc_d2.internal",
+    buildInfoOptions += BuildInfoOption.PackagePrivate,
     buildInfoKeys := Seq[BuildInfoKey](
       version,
       scalaVersion,
       scalaBinaryVersion
-    ),
-    scalaJSUseMainModuleInitializer := true,
-    scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
+    )
   )
 
 lazy val docs = project
-  .in(file("myproject-docs"))
+  .in(file("target/.docs"))
   .settings(
-    scalaVersion := Scala213,
+    scalaVersion := Versions.Scala213,
     mdocVariables := Map(
       "VERSION" -> version.value
     ),
     publish / skip := true,
     publishLocal / skip := true
   )
-  .settings(disableDependencyChecks)
-  .dependsOn(core.jvm(Scala213))
+  .dependsOn(core.jvm(Versions.Scala213))
   .enablePlugins(MdocPlugin)
+  .settings(
+    mdocVariables := Map("VERSION" -> "0.0.1")
+  )
+
+lazy val docsDrifted = taskKey[Boolean]("")
+docsDrifted := {
+  val readmeIn = (baseDirectory.value / "README.in.md").toString
+  val generated =
+    (docs / Compile / mdoc).toTask(s"").value
+
+  val out = (docs / Compile / mdocOut).value / "README.in.md"
+
+  val actualReadme = (ThisBuild / baseDirectory).value / "README.md"
+
+  val renderedContents = IO.read(out)
+  val actualContents = IO.read(actualReadme)
+
+  renderedContents != actualContents
+}
+
+lazy val checkDocs = taskKey[Unit]("")
+checkDocs := {
+
+  val hasDrifted = docsDrifted.value
+
+  if (hasDrifted) {
+    throw new MessageOnlyException(
+      "Docs have drifted! please run `updateDocs` in SBT to rectify"
+    )
+  }
+}
+
+lazy val updateDocs = taskKey[Unit]("")
+updateDocs := {
+
+  val hasDrifted = docsDrifted.value
+
+  if (hasDrifted) {
+    sLog.value.warn("README.md has drifted, overwriting it")
+
+    val out = (docs / Compile / mdocOut).value / "README.in.md"
+
+    val actualReadme = (ThisBuild / baseDirectory).value / "README.md"
+
+    IO.copyFile(out, actualReadme)
+  } else {
+
+    sLog.value.info("README.md is up to date")
+  }
+}
 
 val scalafixRules = Seq(
   "OrganizeImports",
@@ -95,16 +140,11 @@ val scalafixRules = Seq(
 
 val CICommands = Seq(
   "clean",
-  "compile",
-  "test",
-  "docs/mdoc",
+  "checkDocs",
   "scalafmtCheckAll",
   "scalafmtSbtCheck",
   s"scalafix --check $scalafixRules",
-  "headerCheck",
-  "undeclaredCompileDependenciesTest",
-  "unusedCompileDependenciesTest",
-  "missinglinkCheck"
+  "headerCheck"
 ).mkString(";")
 
 val PrepareCICommands = Seq(
@@ -112,7 +152,7 @@ val PrepareCICommands = Seq(
   "scalafmtAll",
   "scalafmtSbt",
   "headerCreate",
-  "undeclaredCompileDependenciesTest"
+  "updateDocs"
 ).mkString(";")
 
 addCommandAlias("ci", CICommands)
